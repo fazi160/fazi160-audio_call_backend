@@ -9,3 +9,4 @@ PyJWT
 cryptography
 twilio
 firebase-admin
+webauthn
