@@ -3,8 +3,30 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
+from django_filters import FilterSet, CharFilter
 from .models import Contact
 from .serializers import ContactSerializer, ContactListSerializer
+
+
+class ContactFilter(FilterSet):
+    """Custom filter for Contact model"""
+    
+    # Custom filter for tags - search within JSON array
+    tags = CharFilter(method='filter_tags')
+    name = CharFilter(lookup_expr='icontains')
+    phone = CharFilter(lookup_expr='icontains')
+    email = CharFilter(lookup_expr='icontains')
+    notes = CharFilter(lookup_expr='icontains')
+    
+    def filter_tags(self, queryset, name, value):
+        """Filter contacts by tags (JSON array contains)"""
+        if value:
+            return queryset.filter(tags__contains=[value])
+        return queryset
+    
+    class Meta:
+        model = Contact
+        fields = ['name', 'phone', 'email', 'notes', 'tags']
 
 
 class ContactViewSet(viewsets.ModelViewSet):
@@ -12,7 +34,7 @@ class ContactViewSet(viewsets.ModelViewSet):
     
     serializer_class = ContactSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['tags']
+    filterset_class = ContactFilter
     search_fields = ['name', 'phone', 'email', 'notes']
     ordering_fields = ['name', 'created_at', 'updated_at', 'last_contacted']
     ordering = ['-updated_at']
@@ -46,7 +68,9 @@ class ContactViewSet(viewsets.ModelViewSet):
         if email:
             queryset = queryset.filter(email__icontains=email)
         if tags:
-            queryset = queryset.filter(tags__contains=tags)
+            # Filter by multiple tags - contact must have all specified tags
+            for tag in tags:
+                queryset = queryset.filter(tags__contains=[tag])
         
         # Paginate results
         page = self.paginate_queryset(queryset)
@@ -71,5 +95,6 @@ class ContactViewSet(viewsets.ModelViewSet):
         queryset = self.get_queryset()
         tags = set()
         for contact in queryset:
-            tags.update(contact.tags)
-        return Response({'tags': list(tags)})
+            if contact.tags and isinstance(contact.tags, list):
+                tags.update(contact.tags)
+        return Response({'tags': sorted(list(tags))})
