@@ -6,7 +6,6 @@ urlpatterns = [
     path("voice/handler/", views.voice_handler, name="voice_handler"),
     path("voice/fallback/", views.voice_fallback, name="voice_fallback"),
     path("voice/status/", views.voice_status_callback, name="voice_status_callback"),
-    path("webhook/incoming/", views.incoming_call_webhook, name="incoming_call_webhook"),
     path("history/", views.call_history, name="call_history"),
     path("statistics/", views.call_statistics, name="call_statistics"),
     path("detail/<int:call_id>/", views.call_detail, name="call_detail"),

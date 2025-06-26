@@ -30,7 +30,7 @@ class CallSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'contact', 'contact_number', 'user', 'created_at', 
             'updated_at', 'call_status', 'call_duration', 'call_start_time', 
-            'call_end_time', 'call_sid', 'display_name', 'display_number', 'notes'
+            'call_end_time', 'call_sid', 'display_name', 'display_number', 'notes', 'call_direction'
         ]
         read_only_fields = ['created_at', 'updated_at']
     
@@ -72,7 +72,8 @@ class CallHistorySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'contact', 'contact_number', 'user', 'created_at', 
             'call_status', 'call_duration', 'call_start_time', 
-            'call_end_time', 'display_name', 'display_number', 'duration_formatted'
+            'call_end_time', 'display_name', 'display_number', 'duration_formatted', 
+            'call_direction'
         ]
     
     def get_display_name(self, obj):

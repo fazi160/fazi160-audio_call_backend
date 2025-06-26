@@ -69,6 +69,7 @@ def call_history(request):
         date_from = request.GET.get("date_from")
         date_to = request.GET.get("date_to")
         search = request.GET.get("search")
+        call_direction = request.GET.get("call_direction")
         
         # Start with user's calls
         calls = Call.objects.filter(user=request.user).order_by('-created_at')
@@ -76,7 +77,10 @@ def call_history(request):
         # Apply filters
         if status_filter:
             calls = calls.filter(call_status=status_filter)
-        
+
+        if call_direction:
+            calls = calls.filter(call_direction=call_direction)   
+                 
         if contact_id:
             calls = calls.filter(contact_id=contact_id)
         
@@ -297,6 +301,7 @@ def voice_handler(request):
                 call_status="initiated",
                 call_start_time=datetime.now(),
                 call_sid=call_sid,
+                call_direction="outgoing",
             )
             logger.info(f"Call record created for outgoing call: {call_sid}")
 
@@ -346,6 +351,7 @@ def voice_handler(request):
                         call_status="ringing",
                         call_start_time=datetime.now(),
                         call_sid=call_sid,
+                        call_direction="incoming",
                     )
                     logger.info(f"Call record created for incoming call: {call_sid}")
                 except Exception as e:
@@ -422,7 +428,9 @@ def incoming_call_webhook(request):
             "user": contact.user.id if contact else User.objects.first().id,
             "call_status": "incoming",
             "call_start_time": datetime.now(),
-            "call_sid": call_sid
+            "call_sid": call_sid,
+            "call_direction": "incoming"
+
         }
         
         serializer = CallCreateSerializer(data=call_data)

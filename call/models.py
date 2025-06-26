@@ -14,6 +14,7 @@ class Call(models.Model):
     call_start_time = models.DateTimeField(null=True, blank=True)
     call_end_time = models.DateTimeField(null=True, blank=True)
     call_sid = models.CharField(max_length=255, null=True, blank=True)
+    call_direction = models.CharField(max_length=255, choices=[('incoming', 'Incoming'), ('outgoing', 'Outgoing')], null=True, blank=True)
 
 
     def __str__(self):
