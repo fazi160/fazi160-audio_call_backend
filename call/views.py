@@ -17,8 +17,12 @@ from .serializers import CallSerializer, CallCreateSerializer, CallHistorySerial
 from contact.models import Contact
 from django.contrib.auth.models import User
 from django.db.models import Q
+import logging
 
 # Create your views here.
+
+logging.basicConfig(level=logging.INFO)
+logging.info("This will always show up in Render logs")
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -253,9 +257,11 @@ def voice_handler(request):
     from django.contrib.auth.models import User
     from contact.models import Contact
 
-    print("=== Twilio Voice Handler Called ===")
-    print("Request method:", request.method)
-    print("Request POST data:", dict(request.POST))
+    logger = logging.getLogger("call.voice_handler")
+
+    logger.info("=== Twilio Voice Handler Called ===")
+    logger.info(f"Request method: {request.method}")
+    logger.info(f"Request POST data: {dict(request.POST)}")
 
     response = VoiceResponse()
     direction = request.POST.get("Direction")
@@ -264,23 +270,23 @@ def voice_handler(request):
     from_number = request.POST.get("From")
     account_sid = request.POST.get("AccountSid")
 
-    print(f"Direction: {direction}, To: {to_target}, From: {from_number}, CallSid: {call_sid}, AccountSid: {account_sid}")
+    logger.info(f"Direction: {direction}, To: {to_target}, From: {from_number}, CallSid: {call_sid}, AccountSid: {account_sid}")
 
     if direction == "outbound-api":
-        print("Handling outbound-api (outgoing call from web client)")
+        logger.info("Handling outbound-api (outgoing call from web client)")
         # Try to find contact by number
         contact = None
         if to_target:
             try:
                 contact = Contact.objects.filter(phone_number__icontains=to_target).first()
-                print(f"Contact found for {to_target}: {contact}")
+                logger.info(f"Contact found for {to_target}: {contact}")
             except Exception as e:
-                print(f"Error finding contact: {e}")
+                logger.warning(f"Error finding contact: {e}")
                 contact = None
 
         # Try to find the user (fallback to first user if not found)
         user = User.objects.first()
-        print(f"User used for call: {user}")
+        logger.info(f"User used for call: {user}")
 
         # Only create if not already exists
         if call_sid and not Call.objects.filter(call_sid=call_sid).exists():
@@ -292,29 +298,29 @@ def voice_handler(request):
                 call_start_time=datetime.now(),
                 call_sid=call_sid,
             )
-            print(f"Call record created for outgoing call: {call_sid}")
+            logger.info(f"Call record created for outgoing call: {call_sid}")
 
         if not to_target:
-            print("No 'To' destination provided.")
+            logger.warning("No 'To' destination provided.")
             response.say("Sorry, we need a 'To' destination to connect your call.")
             return HttpResponse(str(response), content_type='application/xml')
 
         dial = Dial(caller_id=os.getenv("TWILIO_CALLER_ID"))
         dial.number(to_target)
         response.append(dial)
-        print(f"Dialing out to {to_target}")
+        logger.info(f"Dialing out to {to_target}")
 
     elif direction == "inbound":
-        print("Handling inbound call")
+        logger.info("Handling inbound call")
         # Check if this is a call from Twilio Client (browser) to a phone number
         if from_number and from_number.startswith("client:"):
-            print("Inbound call from Twilio Client")
+            logger.info("Inbound call from Twilio Client")
             dial = Dial(caller_id=os.getenv("TWILIO_CALLER_ID"))
             dial.number(to_target)
             response.append(dial)
-            print(f"Dialing number {to_target} from client")
+            logger.info(f"Dialing number {to_target} from client")
         else:
-            print("Inbound call from real phone number")
+            logger.info("Inbound call from real phone number")
             # Try to find contact by phone number
             contact = None
             if from_number:
@@ -323,13 +329,13 @@ def voice_handler(request):
                     contact = Contact.objects.filter(
                         phone_number__icontains=clean_number[-10:]
                     ).first()
-                    print(f"Contact found for {from_number}: {contact}")
+                    logger.info(f"Contact found for {from_number}: {contact}")
                 except Exception as e:
-                    print(f"Error finding contact: {e}")
+                    logger.warning(f"Error finding contact: {e}")
                     contact = None
 
             user = User.objects.first()
-            print(f"User used for call: {user}")
+            logger.info(f"User used for call: {user}")
 
             if call_sid and not Call.objects.filter(call_sid=call_sid).exists():
                 try:
@@ -341,22 +347,22 @@ def voice_handler(request):
                         call_start_time=datetime.now(),
                         call_sid=call_sid,
                     )
-                    print(f"Call record created for incoming call: {call_sid}")
+                    logger.info(f"Call record created for incoming call: {call_sid}")
                 except Exception as e:
-                    print(f"Error creating call record: {e}")
+                    logger.warning(f"Error creating call record: {e}")
 
             dial = Dial(timeout=30, record="record-from-ringing")
             dial.client("dashboard")
             response.append(dial)
-            print("Forwarding call to dashboard client")
+            logger.info("Forwarding call to dashboard client")
 
             response.say("Sorry, no one is available to take your call right now. Please try again later.")
     else:
-        print("Unknown direction or missing parameters")
+        logger.warning("Unknown direction or missing parameters")
         response.say("Sorry, we could not process your call.")
 
-    print("Returning TwiML response:")
-    print(str(response))
+    logger.info("Returning TwiML response:")
+    logger.info(str(response))
     return HttpResponse(str(response), content_type='application/xml')
 
 @csrf_exempt
