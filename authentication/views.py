@@ -606,7 +606,7 @@ def webauthn_authenticate_complete(request):
 
 
 
-        # Update credential
+        # Update credential sign count
         credential.sign_count = verification.new_sign_count
         credential.update_last_used()
         credential.save()
