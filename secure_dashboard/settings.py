@@ -91,25 +91,29 @@ WSGI_APPLICATION = "secure_dashboard.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# Check if we're in deployment mode
+DEPLOY = os.getenv('DEPLOY', 'False').lower() == 'true'
+
+if DEPLOY:
+    # Production PostgreSQL database (Render)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', 'dbname_wg7l'),
+            'USER': os.getenv('DB_USER', 'db'),
+            'PASSWORD': os.getenv('DB_PASSWORD', 'QjPbAKaACjyFpSMhvAZBjIjk6Pgl7xsw'),
+            'HOST': os.getenv('DB_HOST', 'dpg-d1emvd7fte5s73el39qg-a.oregon-postgres.render.com'),
+            'PORT': os.getenv('DB_PORT', '5432'),
+        }
     }
-}
-
-# For production, use PostgreSQL
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.getenv('DB_NAME', 'secure_dashboard'),
-#         'USER': os.getenv('DB_USER', 'postgres'),
-#         'PASSWORD': os.getenv('DB_PASSWORD', ''),
-#         'HOST': os.getenv('DB_HOST', 'localhost'),
-#         'PORT': os.getenv('DB_PORT', '5432'),
-#     }
-# }
-
+else:
+    # Development SQLite database
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
