@@ -745,11 +745,11 @@ POST /api/contact/contacts/{contact_id}/link_calls/
 ```env
 # Database Configuration
 DEPLOY=True
-DB_NAME=dbname_wg7l
-DB_USER=db
-DB_PASSWORD=QjPbAKaACjyFpSMhvAZBjIjk6Pgl7xsw
-DB_HOST=dpg-d1emvd7fte5s73el39qg-a.oregon-postgres.render.com
-DB_PORT=5432
+DB_NAME=db_name
+DB_USER=db_user
+DB_PASSWORD=db_password
+DB_HOST=host_url
+DB_PORT=port
 
 # Django Configuration
 SECRET_KEY=your-secret-key
