@@ -252,7 +252,11 @@ def voice_handler(request):
     """Unified handler for both incoming and outgoing calls."""
     from django.contrib.auth.models import User
     from contact.models import Contact
-    
+
+    print("=== Twilio Voice Handler Called ===")
+    print("Request method:", request.method)
+    print("Request POST data:", dict(request.POST))
+
     response = VoiceResponse()
     direction = request.POST.get("Direction")
     to_target = request.POST.get("To") or request.POST.get("to")
@@ -260,23 +264,24 @@ def voice_handler(request):
     from_number = request.POST.get("From")
     account_sid = request.POST.get("AccountSid")
 
-
+    print(f"Direction: {direction}, To: {to_target}, From: {from_number}, CallSid: {call_sid}, AccountSid: {account_sid}")
 
     if direction == "outbound-api":
-        # Outgoing call from web client
-
-        
+        print("Handling outbound-api (outgoing call from web client)")
         # Try to find contact by number
         contact = None
         if to_target:
             try:
                 contact = Contact.objects.filter(phone_number__icontains=to_target).first()
-            except Exception:
+                print(f"Contact found for {to_target}: {contact}")
+            except Exception as e:
+                print(f"Error finding contact: {e}")
                 contact = None
-        
+
         # Try to find the user (fallback to first user if not found)
         user = User.objects.first()
-        
+        print(f"User used for call: {user}")
+
         # Only create if not already exists
         if call_sid and not Call.objects.filter(call_sid=call_sid).exists():
             Call.objects.create(
@@ -287,42 +292,45 @@ def voice_handler(request):
                 call_start_time=datetime.now(),
                 call_sid=call_sid,
             )
-        
+            print(f"Call record created for outgoing call: {call_sid}")
+
         if not to_target:
+            print("No 'To' destination provided.")
             response.say("Sorry, we need a 'To' destination to connect your call.")
             return HttpResponse(str(response), content_type='application/xml')
-        
+
         dial = Dial(caller_id=os.getenv("TWILIO_CALLER_ID"))
         dial.number(to_target)
         response.append(dial)
-        
-    elif direction == "inbound":
+        print(f"Dialing out to {to_target}")
 
-        
+    elif direction == "inbound":
+        print("Handling inbound call")
         # Check if this is a call from Twilio Client (browser) to a phone number
         if from_number and from_number.startswith("client:"):
+            print("Inbound call from Twilio Client")
             dial = Dial(caller_id=os.getenv("TWILIO_CALLER_ID"))
             dial.number(to_target)
             response.append(dial)
+            print(f"Dialing number {to_target} from client")
         else:
-            # This is a real incoming call from a phone number to your Twilio number
-            
+            print("Inbound call from real phone number")
             # Try to find contact by phone number
             contact = None
             if from_number:
                 try:
-                    # Remove any country code formatting for better matching
                     clean_number = from_number.replace('+', '').replace('-', '').replace('(', '').replace(')', '').replace(' ', '')
                     contact = Contact.objects.filter(
-                        phone_number__icontains=clean_number[-10:]  # Match last 10 digits
+                        phone_number__icontains=clean_number[-10:]
                     ).first()
+                    print(f"Contact found for {from_number}: {contact}")
                 except Exception as e:
+                    print(f"Error finding contact: {e}")
                     contact = None
-            
-            # Get user (fallback to first user)
+
             user = User.objects.first()
-            
-            # Create call record if it doesn't exist
+            print(f"User used for call: {user}")
+
             if call_sid and not Call.objects.filter(call_sid=call_sid).exists():
                 try:
                     Call.objects.create(
@@ -333,19 +341,22 @@ def voice_handler(request):
                         call_start_time=datetime.now(),
                         call_sid=call_sid,
                     )
+                    print(f"Call record created for incoming call: {call_sid}")
                 except Exception as e:
-                    pass
-            # Forward the call to your Twilio Client (browser/dashboard)
+                    print(f"Error creating call record: {e}")
+
             dial = Dial(timeout=30, record="record-from-ringing")
-            dial.client("dashboard")  # This should match your client identifier
+            dial.client("dashboard")
             response.append(dial)
-            
-            # Optional: Add a fallback message if no one answers
+            print("Forwarding call to dashboard client")
+
             response.say("Sorry, no one is available to take your call right now. Please try again later.")
     else:
-        # Fallback for unknown direction
+        print("Unknown direction or missing parameters")
         response.say("Sorry, we could not process your call.")
-    
+
+    print("Returning TwiML response:")
+    print(str(response))
     return HttpResponse(str(response), content_type='application/xml')
 
 @csrf_exempt
