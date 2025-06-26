@@ -17,15 +17,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from contacts.views import ContactViewSet
 
-# Create router for API endpoints
-router = DefaultRouter()
-router.register(r'contacts', ContactViewSet, basename='contact')
+
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/", include(router.urls)),
     path("api/auth/", include('authentication.urls')),
-    path("api/dialer/", include('dialer.urls')),
+    path("api/contact/", include('contact.urls')),
+    path("api/call/", include('call.urls')),
 ]

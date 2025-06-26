@@ -30,7 +30,8 @@ SECRET_KEY = os.getenv('SECRET_KEY', "django-insecure-kssmm2t%dsxl0%8ml2#1ds_+n(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.ngrok-free.app', 'dc8a-103-70-197-46.ngrok-free.app']
+
 
 
 # Application definition
@@ -52,8 +53,8 @@ INSTALLED_APPS = [
     
     # Local apps
     "authentication",
-    "contacts",
-    "dialer",
+    "contact",
+    "call",
 ]
 
 MIDDLEWARE = [
@@ -166,6 +167,7 @@ REST_FRAMEWORK = {
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # For development only - use CORS_ALLOWED_ORIGINS in production
+
 # CORS_ALLOWED_ORIGINS = [
 #     "http://localhost:5173",
 #     "http://127.0.0.1:5173",
@@ -174,10 +176,33 @@ CORS_ALLOW_ALL_ORIGINS = True  # For development only - use CORS_ALLOWED_ORIGINS
 
 CORS_ALLOW_CREDENTIALS = True
 
+# Additional CORS headers for ngrok
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'ngrok-skip-browser-warning',
+]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
 # JWT settings
 from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -202,8 +227,12 @@ SIMPLE_JWT = {
 
 # Twilio settings
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID', '')
-TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN', '')
+TWILIO_API_KEY = os.getenv('TWILIO_API_KEY', '')
+TWILIO_API_SECRET = os.getenv('TWILIO_API_SECRET', '')
+TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN', '')  # Legacy, use TWILIO_API_SECRET
 TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER', '')
+TWILIO_CALLER_ID = os.getenv('TWILIO_CALLER_ID', TWILIO_PHONE_NUMBER)  # Fallback to phone number
+TWIML_APP_SID = os.getenv('TWIML_APP_SID', '')
 
 # Base URL for webhooks and callbacks
 # For local development, use localhost
@@ -217,59 +246,3 @@ FIREBASE_CREDENTIALS_PATH = os.getenv('FIREBASE_CREDENTIALS_PATH', '')
 WEBAUTHN_RP_ID = os.getenv('WEBAUTHN_RP_ID', 'localhost')
 WEBAUTHN_RP_NAME = os.getenv('WEBAUTHN_RP_NAME', 'Secure Dashboard')
 WEBAUTHN_RP_ORIGIN = os.getenv('WEBAUTHN_RP_ORIGIN', 'http://localhost:5173')
-
-# Logging configuration
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        },
-        'detailed': {
-            'format': '[{asctime}] {levelname} {name} {funcName}:{lineno} - {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'django.log',
-            'formatter': 'detailed',
-        },
-        'webauthn_file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'webauthn.log',
-            'formatter': 'detailed',
-        },
-        'console': {
-            'level': 'INFO',
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['file', 'console'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'webauthn': {
-            'handlers': ['webauthn_file', 'console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        'authentication': {
-            'handlers': ['webauthn_file', 'console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-    },
-}
