@@ -30,7 +30,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', "django-insecure-kssmm2t%dsxl0%8ml2#1ds_+n(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.ngrok-free.app', 'dc8a-103-70-197-46.ngrok-free.app']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.ngrok-free.app', 'dc8a-103-70-197-46.ngrok-free.app', 'fazi160-audio-call-backend.onrender.com']
 
 
 
