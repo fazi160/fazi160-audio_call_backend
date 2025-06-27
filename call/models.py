@@ -6,7 +6,7 @@ from contact.models import Contact
 class Call(models.Model):
     contact = models.ForeignKey(Contact, on_delete=models.SET_NULL, null=True, blank=True)
     contact_number = models.CharField(max_length=255, null=True, blank=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     call_status = models.CharField(max_length=255, choices=[('initiated', 'Initiated'), ('completed', 'Completed'), ('failed', 'Failed')])
@@ -19,8 +19,8 @@ class Call(models.Model):
 
     def __str__(self):
         if self.contact:
-            return f"{self.contact.name} - {self.user.username}"
-        return f"{self.contact_number} - {self.user.username}"
+            return f"{self.contact.name} - {self.user.username if self.user else 'Unknown User'}"
+        return f"{self.contact_number} - {self.user.username if self.user else 'Unknown User'}"
     
 
 class Note(models.Model):
@@ -31,6 +31,6 @@ class Note(models.Model):
 
     def __str__(self):
         if self.call.contact:
-            return f"{self.call.contact.name} - {self.call.user.username}"
-        return f"{self.call.contact_number} - {self.call.user.username}"
+            return f"{self.call.contact.name} - {self.call.user.username if self.call.user else 'Unknown User'}"
+        return f"{self.call.contact_number} - {self.call.user.username if self.call.user else 'Unknown User'}"
 

@@ -61,7 +61,7 @@ def get_token(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def call_history(request):
-    """Get call history for the authenticated user"""
+    """Get all call history (no user filtering)"""
     try:
         # Get query parameters for filtering
         status_filter = request.GET.get("status")
@@ -71,8 +71,8 @@ def call_history(request):
         search = request.GET.get("search")
         call_direction = request.GET.get("call_direction")
         
-        # Start with user's calls
-        calls = Call.objects.filter(user=request.user).order_by('-created_at')
+        # Start with all calls (no user filtering)
+        calls = Call.objects.all().order_by('-created_at')
         
         # Apply filters
         if status_filter:
@@ -80,7 +80,7 @@ def call_history(request):
 
         if call_direction:
             calls = calls.filter(call_direction=call_direction)   
-                 
+
         if contact_id:
             calls = calls.filter(contact_id=contact_id)
         
@@ -136,7 +136,7 @@ def call_history(request):
 def call_detail(request, call_id):
     """Get detailed information about a specific call"""
     try:
-        call = Call.objects.get(id=call_id, user=request.user)
+        call = Call.objects.get(id=call_id)
         serializer = CallSerializer(call)
         
         return Response({
@@ -160,7 +160,7 @@ def call_detail(request, call_id):
 def add_note(request, call_id):
     """Add a note to a call"""
     try:
-        call = Call.objects.get(id=call_id, user=request.user)
+        call = Call.objects.get(id=call_id)
         note_text = request.data.get("note")
         
         if not note_text:
@@ -188,71 +188,6 @@ def add_note(request, call_id):
             "status": "error"
         }, status=500)
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def call_statistics(request):
-    """Get call statistics for the authenticated user"""
-    try:
-        from django.db.models import Count, Avg, Sum
-        from django.utils import timezone
-        from datetime import timedelta
-        
-        # Get date range (default to last 30 days)
-        days = int(request.GET.get("days", 30))
-        end_date = timezone.now()
-        start_date = end_date - timedelta(days=days)
-        
-        # Get calls in date range
-        calls = Call.objects.filter(
-            user=request.user,
-            created_at__range=(start_date, end_date)
-        )
-        
-        # Calculate statistics
-        total_calls = calls.count()
-        completed_calls = calls.filter(call_status="completed").count()
-        failed_calls = calls.filter(call_status="failed").count()
-        initiated_calls = calls.filter(call_status="initiated").count()
-        
-        # Average call duration
-        avg_duration = calls.filter(call_duration__gt=0).aggregate(
-            avg_duration=Avg('call_duration')
-        )['avg_duration'] or 0
-        
-        # Total call duration
-        total_duration = calls.aggregate(
-            total_duration=Sum('call_duration')
-        )['total_duration'] or 0
-        
-        # Calls by status
-        status_breakdown = calls.values('call_status').annotate(
-            count=Count('id')
-        )
-        
-        return Response({
-            "statistics": {
-                "total_calls": total_calls,
-                "completed_calls": completed_calls,
-                "failed_calls": failed_calls,
-                "initiated_calls": initiated_calls,
-                "avg_duration_seconds": round(avg_duration, 2),
-                "total_duration_seconds": total_duration,
-                "success_rate": round((completed_calls / total_calls * 100) if total_calls > 0 else 0, 2),
-                "status_breakdown": list(status_breakdown),
-                "date_range": {
-                    "start_date": start_date.isoformat(),
-                    "end_date": end_date.isoformat(),
-                    "days": days
-                }
-            },
-            "status": "success"
-        })
-        
-    except Exception as e:
-        return Response({
-            "error": str(e),
-            "status": "error"
-        }, status=500)
 
 
 @csrf_exempt
@@ -288,16 +223,11 @@ def voice_handler(request):
                 logger.warning(f"Error finding contact: {e}")
                 contact = None
 
-        # Try to find the user (fallback to first user if not found)
-        user = User.objects.first()
-        logger.info(f"User used for call: {user}")
-
         # Only create if not already exists
         if call_sid and not Call.objects.filter(call_sid=call_sid).exists():
             Call.objects.create(
                 contact=contact,
                 contact_number=to_target,
-                user=user,
                 call_status="initiated",
                 call_start_time=datetime.now(),
                 call_sid=call_sid,
@@ -320,6 +250,32 @@ def voice_handler(request):
         # Check if this is a call from Twilio Client (browser) to a phone number
         if from_number and from_number.startswith("client:"):
             logger.info("Inbound call from Twilio Client")
+            
+            # Create call record for Twilio Client calls
+            # Try to find contact by number
+            contact = None
+            if to_target:
+                try:
+                    contact = Contact.objects.filter(phone_number__icontains=to_target).first()
+                    logger.info(f"Contact found for {to_target}: {contact}")
+                except Exception as e:
+                    logger.warning(f"Error finding contact: {e}")
+                    contact = None
+            
+            if call_sid and not Call.objects.filter(call_sid=call_sid).exists():
+                try:
+                    Call.objects.create(
+                        contact=contact,
+                        contact_number=to_target,
+                        call_status="ringing",
+                        call_start_time=datetime.now(),
+                        call_sid=call_sid,
+                        call_direction="outgoing",  # This is outgoing from the client's perspective
+                    )
+                    logger.info(f"Call record created for Twilio Client call: {call_sid}")
+                except Exception as e:
+                    logger.warning(f"Error creating call record: {e}")
+            
             dial = Dial(caller_id=os.getenv("TWILIO_CALLER_ID"))
             dial.number(to_target)
             response.append(dial)
@@ -339,15 +295,11 @@ def voice_handler(request):
                     logger.warning(f"Error finding contact: {e}")
                     contact = None
 
-            user = User.objects.first()
-            logger.info(f"User used for call: {user}")
-
             if call_sid and not Call.objects.filter(call_sid=call_sid).exists():
                 try:
                     Call.objects.create(
                         contact=contact,
                         contact_number=from_number,
-                        user=user,
                         call_status="ringing",
                         call_start_time=datetime.now(),
                         call_sid=call_sid,
@@ -371,12 +323,6 @@ def voice_handler(request):
     logger.info(str(response))
     return HttpResponse(str(response), content_type='application/xml')
 
-@csrf_exempt
-def voice_fallback(request):
-    """Fallback handler for TwiML App."""
-    response = VoiceResponse()
-    response.say("Sorry, we are unable to process your call at the moment. Please try again later.")
-    return HttpResponse(str(response), content_type='application/xml')
 
 @csrf_exempt
 def voice_status_callback(request):
@@ -402,53 +348,10 @@ def voice_status_callback(request):
     except Exception as e:
         return HttpResponse("", status=500)
 
+
 @csrf_exempt
-def incoming_call_webhook(request):
-    """Handle incoming call webhook from Twilio."""
-    try:
-        # Get incoming call details
-        call_sid = request.POST.get("CallSid")
-        from_number = request.POST.get("From")
-        to_number = request.POST.get("To")
-        
-        
-        # Try to find contact by phone number
-        contact = None
-        try:
-            # Remove + and any formatting from phone number
-            clean_number = from_number.replace("+", "").replace("-", "").replace(" ", "")
-            contact = Contact.objects.get(phone_number__icontains=clean_number)
-        except Contact.DoesNotExist:
-            pass
-        
-        # Create call record
-        call_data = {
-            "contact": contact.id if contact else None,
-            "contact_number": from_number,
-            "user": contact.user.id if contact else User.objects.first().id,
-            "call_status": "incoming",
-            "call_start_time": datetime.now(),
-            "call_sid": call_sid,
-            "call_direction": "incoming"
-
-        }
-        
-        serializer = CallCreateSerializer(data=call_data)
-        if serializer.is_valid():
-            call = serializer.save()
-        else:
-            pass
-        
-        # Generate TwiML response
-        response = VoiceResponse()
-        response.say("Hello! Welcome to our calling system.")
-        
-        return HttpResponse(str(response), content_type='application/xml')
-        
-    except Exception as e:
-        # Return a basic TwiML response even on error
-        response = VoiceResponse()
-        response.say("Thank you for calling.")
-        return HttpResponse(str(response), content_type='application/xml')
-
-
+def voice_fallback(request):
+    """Fallback handler for TwiML App."""
+    response = VoiceResponse()
+    response.say("Sorry, we are unable to process your call at the moment. Please try again later.")
+    return HttpResponse(str(response), content_type='application/xml')
