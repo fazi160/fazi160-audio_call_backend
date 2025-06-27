@@ -69,7 +69,7 @@ def call_history(request):
         date_from = request.GET.get("date_from")
         date_to = request.GET.get("date_to")
         search = request.GET.get("search")
-        call_direction = request.GET.get("call_direction")
+        call_direction = request.GET.get("call_direction") or request.GET.get("direction")
         
         # Start with all calls (no user filtering)
         calls = Call.objects.all().order_by('-created_at')
