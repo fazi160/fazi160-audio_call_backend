@@ -730,13 +730,6 @@ POST /api/contact/contacts/{contact_id}/link_calls/
 - `429` - Too Many Requests
 - `500` - Internal Server Error
 
----
-
-## Rate Limiting
-
-- **WebAuthn operations**: 5 attempts per 5 minutes per user
-- **Authentication endpoints**: Standard rate limiting applied
-- **API endpoints**: 1000 requests per hour per user
 
 ---
 
