@@ -209,6 +209,16 @@ def voice_handler(request):
     from_number = request.POST.get("From")
     account_sid = request.POST.get("AccountSid")
 
+    # Extract custom parameters sent from frontend
+    user_id = request.POST.get("UserId")
+    if user_id:
+        logger.info(f"User ID 11111111111111111111111111111111111111111111111111111111: {user_id}")
+    else:
+        logger.info("No User ID provided 11111111111111111111111111111111111111111111111111111111")
+
+    # Log custom parameters
+    logger.info(f"Custom Parameters - UserId: {user_id}")
+
     logger.info(f"Direction: {direction}, To: {to_target}, From: {from_number}, CallSid: {call_sid}, AccountSid: {account_sid}")
 
     if direction == "outbound-api":
@@ -225,14 +235,19 @@ def voice_handler(request):
 
         # Only create if not already exists
         if call_sid and not Call.objects.filter(call_sid=call_sid).exists():
-            Call.objects.create(
-                contact=contact,
-                contact_number=to_target,
-                call_status="initiated",
-                call_start_time=datetime.now(),
-                call_sid=call_sid,
-                call_direction="outgoing",
-            )
+            # Create call record with custom parameters
+            call_data = {
+                'contact': contact,
+                'contact_number': to_target,
+                'call_status': "initiated",
+                'call_start_time': datetime.now(),
+                'call_sid': call_sid,
+                'call_direction': "outgoing",
+            }
+            if user_id:
+                call_data['user'] = user_id
+
+            Call.objects.create(**call_data)
             logger.info(f"Call record created for outgoing call: {call_sid}")
 
         if not to_target:
@@ -264,14 +279,19 @@ def voice_handler(request):
             
             if call_sid and not Call.objects.filter(call_sid=call_sid).exists():
                 try:
-                    Call.objects.create(
-                        contact=contact,
-                        contact_number=to_target,
-                        call_status="ringing",
-                        call_start_time=datetime.now(),
-                        call_sid=call_sid,
-                        call_direction="outgoing",  # This is outgoing from the client's perspective
-                    )
+                    # Create call record with custom parameters
+                    call_data = {
+                        'contact': contact,
+                        'contact_number': to_target,
+                        'call_status': "ringing",
+                        'call_start_time': datetime.now(),
+                        'call_sid': call_sid,
+                        'call_direction': "outgoing",  # This is outgoing from the client's perspective
+                    }
+                    if user_id:
+                        call_data['user'] = user_id
+
+                    Call.objects.create(**call_data)
                     logger.info(f"Call record created for Twilio Client call: {call_sid}")
                 except Exception as e:
                     logger.warning(f"Error creating call record: {e}")
@@ -297,14 +317,19 @@ def voice_handler(request):
 
             if call_sid and not Call.objects.filter(call_sid=call_sid).exists():
                 try:
-                    Call.objects.create(
-                        contact=contact,
-                        contact_number=from_number,
-                        call_status="ringing",
-                        call_start_time=datetime.now(),
-                        call_sid=call_sid,
-                        call_direction="incoming",
-                    )
+                    # Create call record with custom parameters
+                    call_data = {
+                        'contact': contact,
+                        'contact_number': from_number,
+                        'call_status': "ringing",
+                        'call_start_time': datetime.now(),
+                        'call_sid': call_sid,
+                        'call_direction': "incoming",
+                    }
+                    if user_id:
+                        call_data['user'] = user_id
+
+                    Call.objects.create(**call_data)
                     logger.info(f"Call record created for incoming call: {call_sid}")
                 except Exception as e:
                     logger.warning(f"Error creating call record: {e}")
