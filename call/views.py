@@ -72,7 +72,7 @@ def call_history(request):
         call_direction = request.GET.get("call_direction") or request.GET.get("direction")
         
         # Start with all calls (no user filtering)
-        calls = Call.objects.all().order_by('-created_at')
+        calls = Call.objects.filter(user=request.user).order_by('-created_at')
         
         # Apply filters
         if status_filter:
@@ -212,9 +212,9 @@ def voice_handler(request):
     # Extract custom parameters sent from frontend
     user_id = request.POST.get("UserId")
     if user_id:
-        logger.info(f"User ID 11111111111111111111111111111111111111111111111111111111: {user_id}")
+        user = User.objects.get(id=user_id)
     else:
-        logger.info("No User ID provided 11111111111111111111111111111111111111111111111111111111")
+        logger.info("No User ID provided")
 
     # Log custom parameters
     logger.info(f"Custom Parameters - UserId: {user_id}")
@@ -244,8 +244,8 @@ def voice_handler(request):
                 'call_sid': call_sid,
                 'call_direction': "outgoing",
             }
-            if user_id:
-                call_data['user'] = user_id
+            if user:
+                call_data['user'] = user
 
             Call.objects.create(**call_data)
             logger.info(f"Call record created for outgoing call: {call_sid}")
@@ -288,8 +288,8 @@ def voice_handler(request):
                         'call_sid': call_sid,
                         'call_direction': "outgoing",  # This is outgoing from the client's perspective
                     }
-                    if user_id:
-                        call_data['user'] = user_id
+                    if user:
+                        call_data['user'] = user
 
                     Call.objects.create(**call_data)
                     logger.info(f"Call record created for Twilio Client call: {call_sid}")
@@ -326,8 +326,8 @@ def voice_handler(request):
                         'call_sid': call_sid,
                         'call_direction': "incoming",
                     }
-                    if user_id:
-                        call_data['user'] = user_id
+                    if user:
+                        call_data['user'] = user
 
                     Call.objects.create(**call_data)
                     logger.info(f"Call record created for incoming call: {call_sid}")
