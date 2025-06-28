@@ -19,10 +19,28 @@ class Call(models.Model):
 
     class Meta:
         ordering = ['-updated_at']
-        unique_together = ['user', 'contact_number']
     
     def __str__(self):
-        return f"{self.contact.name} ({self.contact_number})"
+        return f"{self.contact.name if self.contact else self.contact_number} ({self.contact_number})"
+    
+    def save(self, *args, **kwargs):
+        if self.contact_number and not self.contact:
+            # Normalize phone numbers by removing '+' prefix for comparison
+            normalized_contact_number = self.contact_number.lstrip('+')
+            
+            # Check for contacts with matching phone number (with or without '+')
+            matching_contacts = Contact.objects.filter(
+                phone_number__in=[
+                    self.contact_number,  # Original format
+                    normalized_contact_number,  # Without '+'
+                    f"+{normalized_contact_number}"  # With '+'
+                ]
+            )
+            
+            if matching_contacts.exists():
+                self.contact = matching_contacts.first()
+        super().save(*args, **kwargs)
+            
     
 
     
