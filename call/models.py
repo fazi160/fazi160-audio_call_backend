@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from contact.models import Contact
+
 # Create your models here.
 
 class Call(models.Model):
@@ -16,11 +17,14 @@ class Call(models.Model):
     call_sid = models.CharField(max_length=255, null=True, blank=True)
     call_direction = models.CharField(max_length=255, choices=[('incoming', 'Incoming'), ('outgoing', 'Outgoing')], null=True, blank=True)
 
-
+    class Meta:
+        ordering = ['-updated_at']
+        unique_together = ['user', 'contact_number']
+    
     def __str__(self):
-        if self.contact:
-            return f"{self.contact.name} - {self.user.username if self.user else 'Unknown User'}"
-        return f"{self.contact_number} - {self.user.username if self.user else 'Unknown User'}"
+        return f"{self.contact.name} ({self.contact_number})"
+    
+
     
 
 class Note(models.Model):
